@@ -15,6 +15,7 @@ contract uniswapV2StyleDexPool is uniswapV2StyleDexERC20("uniswapV2StyleDex", "U
     uint public reserve1;
 
     event Mint(address indexed sender, uint amount0, uint amount1);
+    event Burn(address indexed sender, uint amount0, uint amount1, address indexed to);
 
     constructor() {
         factory = msg.sender;
@@ -50,5 +51,28 @@ contract uniswapV2StyleDexPool is uniswapV2StyleDexERC20("uniswapV2StyleDex", "U
         reserve0 = balance0;
         reserve1 = balance1;
         emit Mint (msg.sender, amount0, amount1);
+    }
+    
+    function burn (address to) external returns(uint amount0, uint amount1) {
+        IERC20 token0Contract = IERC20(token0);
+        IERC20 token1Contract = IERC20(token1);
+        
+        uint liquidity = _balances[address(this)];
+        uint balance0 = token0Contract.balanceOf(address(this));
+        uint balance1 = token1Contract.balanceOf(address(this));
+        amount0 = balance0 * liquidity / _totalSupply;
+        amount1 = balance1 * liquidity / _totalSupply;
+        require(amount0 > 0 && amount1 > 0, 'uniswapV2StyleDexPool: INSUFFICIENT_LIQUIDITY_BURNED');
+
+        _burn(address(this), liquidity);
+        bool success0 = token0Contract.transfer(to, amount0);
+        require(success0, 'uniswapV2StyleDexPool: TOKEN0_TRANSFER_FAILED');
+        bool success1 = token1Contract.transfer(to, amount1);
+        require(success1, 'uniswapV2StyleDexPool: TOKEN1_TRANSFER_FAILED');
+
+        reserve0 = token0Contract.balanceOf(address(this));
+        reserve1 = token1Contract.balanceOf(address(this));
+
+        emit Burn(msg.sender, amount0, amount1, to);
     }
 }
