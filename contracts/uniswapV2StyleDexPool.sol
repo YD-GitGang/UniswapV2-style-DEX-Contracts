@@ -37,7 +37,7 @@ contract uniswapV2StyleDexPool is uniswapV2StyleDexERC20("uniswapV2StyleDex", "U
          - ステートヴァリアブルをpublicにすると他のコントラクトで使うときゲッター関数として後ろに()つけて使うかけど、
          - このコントラクトはuniswapV2StyleDexERC20を継承してるからinternalの _totalSupply の後ろに()いらないのかな多分。
          -  _totalSupply * hoge　はいけるけど totalSupply() * hoge はダメでやるならtotalSupply()を変数に入れてからにしなきゃ
-         - いけないから、それがてまで_totalSupplyをinternalにしたのかな多分。
+         - いけないから、それが手間で_totalSupplyをinternalにしたのかな多分。
         */
         if (_totalSupply == 0) {
             require(amount0 * amount1 > MINIMUM_LIQUIDITY * MINIMUM_LIQUIDITY, 'uniswapV2StyleDexPool: BELOW_MINIMUM_LIQUIDITY');

@@ -8,7 +8,7 @@ const MINIMUM_LIQUIDITY = 10**3;
 describe("uniswapV2StyleDexPool test", function() {
     async function deployPoolFixture() {
         //accounts-----
-        const [account0, account1 , account2] = await ethers.getSigners();
+        const [account0, account1, account2] = await ethers.getSigners();
 
         //tokens-----
         const Token = await ethers.getContractFactory("TokenTest");
@@ -26,6 +26,19 @@ describe("uniswapV2StyleDexPool test", function() {
         const poolAddress = await factory.getPool(token0.address, token1.address);
         const pool = new ethers.Contract(poolAddress, uniswapV2StyleDexPool.abi, ethers.provider);
         return { account0, account1, account2, factory, pool, token0, token1 };
+    }
+
+    async function deployPoolAndMintFixture() {
+        const { account0, account1, account2, factory, pool, token0, token1 } = await loadFixture(deployPoolFixture);
+
+        const token0Amount = 40000;
+        const token1Amount = 90000;
+        const liquidity = Math.sqrt(token0Amount * token1Amount);
+        await token0.transfer(pool.address, token0Amount);
+        await token1.transfer(pool.address, token1Amount);
+        await pool.connect(account2).mint(account1.address);
+
+        return { account0, account1, account2, factory, pool, token0, token1 }
     }
 
     describe("state variables", function() {
@@ -61,10 +74,10 @@ describe("uniswapV2StyleDexPool test", function() {
             const { account0, account1, account2, pool, token0, token1 } = await loadFixture(deployPoolFixture);
             const token0Amount = 40000;
             const token1Amount = 90000;
-            const liquidity = Math.sqrt(token0Amount * token1Amount);
+            const liquidity = Math.sqrt(token0Amount * token1Amount);  //たまたま計算結果が小数なしの綺麗な整数だからMath.floorなくてもいい。
             await token0.transfer(pool.address, token0Amount);
             await token1.transfer(pool.address, token1Amount);
-            await expect(pool.connect(account2).mint(account1.address))
+            await expect(pool.connect(account2).mint(account1.address)) // 誰でもいいって理由でテキトウにaccount2
                 .to.emit(pool, 'Transfer')
                 .withArgs(ethers.constants.AddressZero, account1.address, liquidity - MINIMUM_LIQUIDITY)
                 .to.emit(pool, 'Mint')
@@ -93,6 +106,35 @@ describe("uniswapV2StyleDexPool test", function() {
             await token1.transfer(pool.address, token1Amount);
             await pool.connect(account2).mint(account1.address);
             await expect(pool.connect(account2).mint(account1.address)).to.be.revertedWith('uniswapV2StyleDexPool: INSUFFICIENT_LIQUIDITY_MINTED');
+        });
+    })
+
+    describe.only("burn", function() {
+        it("burn all liquidity from account1", async function() {
+            const { account0, account1, account2, pool, token0, token1 } = await loadFixture(deployPoolAndMintFixture);
+
+            expect(await pool.balanceOf(pool.address)).to.eq(0);
+            const liquidity1 = await pool.balanceOf(account1.address);
+            const totalSupply = await pool.totalSupply();
+            const balance0 = await pool.reserve0();
+            const balance1 = await pool.reserve1();
+            const amount0 = balance0.mul(liquidity1).div(totalSupply);
+            const amount1 = balance1.mul(liquidity1).div(totalSupply);
+
+            await pool.connect(account1).transfer(pool.address, liquidity1);
+            await expect(pool.connect(account0).burn(account2.address))
+                .to.emit(pool, 'Burn')
+                .withArgs(account0.address, amount0, amount1, account2.address);
+            expect(await pool.balanceOf(pool.address)).to.eq(0);
+            expect(await token0.balanceOf(account2.address)).to.eq(amount0);
+            expect(await token1.balanceOf(account2.address)).to.eq(amount1);
+        });
+
+        it("burn fails without liquidity token in pool", async function() {
+            const { account0, account1, account2, pool, token0, token1 } = await loadFixture(deployPoolAndMintFixture);
+
+            expect(await pool.balanceOf(pool.address)).to.eq(0);
+            await expect(pool.connect(account0).burn(account2.address)).to.be.revertedWith('uniswapV2StyleDexPool: INSUFFICIENT_LIQUIDITY_BURNED');
         });
     })
 })

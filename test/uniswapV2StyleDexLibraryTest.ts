@@ -30,7 +30,7 @@ describe('uniswapV2StyleDexLibrary', function () {
         //     const amountB: BigNumber = amountA * reserveB / reserveA; // (※1)
         //     expect(await lib.quote(amountA, reserveA, reserveB)).to.eq(amountB);
         //     /*
-        //      - (※1)ethersからインポートしたBigNumberは*とか/みたいな演算子と一緒に使えない気がするけど...違う気もする。
+        //      - (※1)ethersからインポートしたBigNumberは*とか/みたいな演算子と一緒に使えない気がするが...違うだろうか。
         //     */
         // });
 
@@ -83,6 +83,7 @@ describe('uniswapV2StyleDexLibrary', function () {
         //     expect(await lib.quote(amountA, reserveA, reserveB)).to.eq(amountB);
         //     /*
         //      - (※3)Number型(amountA)にmul関数もdiv関数もないからBigNumber型(bigint型?)にする必要があるのにしてないからダメってことかな多分。
+        //      - 21行目みたいになら大丈夫。
         //     */
         // })
     
