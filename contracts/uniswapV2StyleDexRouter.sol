@@ -77,4 +77,24 @@ contract uniswapV2StyleDexRouter {
 
         liquidity = uniswapV2StyleDexPool(pool).mint(to);
     }
+
+    function removeLiquidity (
+        address tokenA,
+        address tokenB,
+        uint liquidity,
+        uint amountAMin,
+        uint amountBMin,
+        address to,
+        uint deadline
+    ) external ensure(deadline) returns(uint amountA, uint amountB) {
+        address pool = uniswapV2StyleDexFactory(factory).getPool(tokenA, tokenB);
+        require(pool != address(0), 'uniswapV2StyleDexRouter: POOL_DOES_NOT_EXIST');
+
+        uniswapV2StyleDexPool(pool).transferFrom(msg.sender, pool, liquidity);
+        (uint amount0, uint amount1) = uniswapV2StyleDexPool(pool).burn(to);
+        
+        (amountA, amountB) = tokenA < tokenB ? (amount0, amount1) : (amount1, amount0);
+        require(amountA >= amountAMin, 'uniswapV2StyleDexRouter: INSUFFICIENT_A_AMOUNT');
+        require(amountB >= amountBMin, 'uniswapV2StyleDexRouter: INSUFFICIENT_B_AMOUNT');
+    }
 }
