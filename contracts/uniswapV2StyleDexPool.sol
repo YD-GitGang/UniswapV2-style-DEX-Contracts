@@ -44,13 +44,18 @@ contract uniswapV2StyleDexPool is uniswapV2StyleDexERC20("uniswapV2StyleDex", "U
             liquidity = Math.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
             _mint(address(0), MINIMUM_LIQUIDITY);
         } else {
-            liquidity = Math.min(amount0 * _totalSupply / reserve0, amount1 * _totalSupply / reserve1);
+            liquidity = Math.min(amount0 * _totalSupply / reserve0, amount1 * _totalSupply / reserve1);  //(※1)
         }
         require(liquidity > 0, 'uniswapV2StyleDexPool: INSUFFICIENT_LIQUIDITY_MINTED');
         _mint(to, liquidity);
         reserve0 = balance0;
         reserve1 = balance1;
         emit Mint (msg.sender, amount0, amount1);
+
+        /*
+         - (※1)amount0 * _totalSupply / reserve0　について。整数の除算の結果は小数点以下切り捨てとなるのだろうか。
+         = 追記: おそらく切り捨てられる。(リテラル同士の除算では、任意の精度で小数点以下も結果に含まれるとか)
+        */
     }
     
     function burn (address to) external returns(uint amount0, uint amount1) {

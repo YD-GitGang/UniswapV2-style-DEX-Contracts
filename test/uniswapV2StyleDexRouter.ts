@@ -184,4 +184,66 @@ describe("uniswapV2StyleDexRouter", function() {
                 )).to.be.revertedWith('uniswapV2StyleDexRouter: EXPIRED');
         });
     });
+
+    describe("removeLiquidity", function() {
+        it("test removeLiquidity", async function() {
+            const { owner, account1, account2, tokenA, tokenB, factory, pool, router } = await loadFixture(step2Fixture);
+
+            const deadline = Math.floor(Date.now() / 1000) + 60;
+            const liquidity = 40421;
+            const totalSupply = await pool.totalSupply();
+            const reserve0 = await pool.reserve0();
+            const reserve1 = await pool.reserve1();
+            const amount0Withdraw = Math.floor(reserve0 * liquidity / totalSupply);
+            const amount1Withdraw = Math.floor(reserve1 * liquidity / totalSupply);
+            const [amountAWithdraw, amountBWithdraw] = tokenA.address < tokenB.address ? [amount0Withdraw, amount1Withdraw] : [amount1Withdraw, amount0Withdraw];
+            const [reserveA, reserveB] = tokenA.address < tokenB.address ? [reserve0, reserve1] : [reserve1, reserve0];
+
+            await pool.connect(account1).approve(router.address, liquidity);
+            await expect(router.connect(account1).removeLiquidity(tokenA.address, tokenB.address, liquidity, 0, 0, account2.address, deadline))
+                .to.emit(pool, 'Transfer')
+                .withArgs(account1.address, pool.address, liquidity)
+                .to.emit(pool, 'Burn')
+                .withArgs(router.address, amount0Withdraw, amount1Withdraw, account2.address);
+
+            expect(await tokenA.balanceOf(account2.address)).to.eq(400000 + amountAWithdraw);
+            expect(await tokenB.balanceOf(account2.address)).to.eq(500000 + amountBWithdraw);
+            expect(await tokenA.balanceOf(pool.address)).to.eq(reserveA - amountAWithdraw);
+            expect(await tokenB.balanceOf(pool.address)).to.eq(reserveB - amountBWithdraw);
+
+            expect(await pool.balanceOf(owner.address)).to.eq(0);
+            expect(await pool.balanceOf(account1.address)).to.eq(100000);
+            expect(await pool.balanceOf(account2.address)).to.eq(0);
+            expect(await pool.balanceOf(pool.address)).to.eq(0);
+        });
+
+        it("revert by amountMin", async function() {
+            const { owner, account1, account2, tokenA, tokenB, factory, pool, router } = await loadFixture(step2Fixture);
+
+            const deadline = Math.floor(Date.now() / 1000) + 60;
+            const amountAMin = 10000;
+            const amountBMin = 10000;
+            const liquidity = 10000;
+
+            await pool.connect(account1).approve(router.address, liquidity);
+            await expect(router.connect(account1).removeLiquidity(
+                tokenA.address, tokenB.address, liquidity, amountAMin, amountBMin, account2.address, deadline
+                )).to.be.revertedWith('uniswapV2StyleDexRouter: INSUFFICIENT_A_AMOUNT');
+            /*
+             - amountAWithdraw: 100000(reserveA) * 10000(liquidity) / 141421(totalSupply) = 7,071
+             - amountBWithdraw: 200000(reserveB) * 10000(liquidity) / 141421(totalSupply) = 14,142
+            */
+        });
+
+        it("revert by invalid token pairs", async function() {
+            const { owner, account1, account2, tokenA, tokenB, factory, pool, router } = await loadFixture(step2Fixture);
+            
+            const deadline = Math.floor(Date.now() / 1000) + 60;
+            const liquidity = 40421;
+
+            await pool.connect(account1).approve(router.address, liquidity);
+            await expect(router.connect(account1).removeLiquidity(owner.address, tokenB.address, liquidity, 0, 0, account2.address, deadline))
+                .to.be.revertedWith('uniswapV2StyleDexRouter: POOL_DOES_NOT_EXIST');
+        });
+    })
 })
