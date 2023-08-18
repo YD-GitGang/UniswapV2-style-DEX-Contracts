@@ -16,6 +16,14 @@ contract uniswapV2StyleDexPool is uniswapV2StyleDexERC20("uniswapV2StyleDex", "U
 
     event Mint(address indexed sender, uint amount0, uint amount1);
     event Burn(address indexed sender, uint amount0, uint amount1, address indexed to);
+    event Swap(
+        address indexed sender,
+        uint amount0In,
+        uint amount1In,
+        uint amount0Out,
+        uint amount1Out,
+        address indexed to
+    );
 
     constructor() {
         factory = msg.sender;
@@ -79,5 +87,49 @@ contract uniswapV2StyleDexPool is uniswapV2StyleDexERC20("uniswapV2StyleDex", "U
         reserve1 = token1Contract.balanceOf(address(this));
 
         emit Burn(msg.sender, amount0, amount1, to);
+    }
+
+    function swap(uint amount0Out, uint amount1Out, address to) external {
+        require(amount0Out > 0 || amount1Out > 0, 'uniswapV2StyleDexPool: INSUFFICIENT_OUTPUT_AMOUNT');
+        require(amount0Out < reserve0 && amount1Out < reserve1, 'uniswapV2StyleDexPool: INSUFFICIENT_LIQUIDITY');
+        require(to != token0 && to != token1, 'uniswapV2StyleDexPool: INVALID_TO');
+
+        uint balance0;
+        uint balance1;
+
+        {
+        IERC20 token0Contract = IERC20(token0);
+        IERC20 token1Contract = IERC20(token1);
+        if(amount0Out > 0) {
+            bool success0 = token0Contract.transfer(to, amount0Out);
+            require(success0, 'uniswapV2StyleDexPool: TOKEN0_TRANSFER_FAILED');
+        }
+        if(amount1Out > 0) {
+            bool success1 = token1Contract.transfer(to, amount1Out);
+            require(success1, 'uniswapV2StyleDexPool: TOKEN1_TRANSFER_FAILED');
+        }
+        balance0 = token0Contract.balanceOf(address(this));
+        balance1 = token1Contract.balanceOf(address(this));
+        }
+
+        uint amount0In = balance0 > reserve0 - amount0Out ? balance0 - (reserve0 - amount0Out) : 0; //(※1)
+        uint amount1In = balance1 > reserve1 - amount1Out ? balance1 - (reserve1 = amount1Out) : 0; //(※2)
+        require(amount0In > 0 || amount1In > 0, 'uniswapV2StyleDexPool: INSUFFICIENT_INPUT_AMOUNT');
+        /*
+         - (※1,2) "?" 側が採用されるとき最後の "= amount1Out" は 0 になるから右辺は
+         - balance1 > reserve1 - amount1Out ? balance1 - reserve1 : 0; で良いが便宜上 "= amount1Out" をたしてる。
+        */
+        
+        uint balance0Adjusted = (balance0 * 1000) - (amount0In * 3); //(※3)
+        uint balance1Adjusted = (balance1 * 1000) - (amount1In * 3); //(※4)
+        require(balance0Adjusted * balance1Adjusted >= reserve0 * reserve1 * 1000**2, 'uniswapV2StyleDexPool: K'); //(※5)
+        /*
+         - //(※3,4)
+         - //(※5)
+        */
+
+        reserve0 = balance0;
+        reserve1 = balance1;
+        emit Swap(msg.sender, amount0In, amount1In, amount0Out, amount1Out, to);
     }
 }
