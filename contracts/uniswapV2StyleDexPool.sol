@@ -113,19 +113,35 @@ contract uniswapV2StyleDexPool is uniswapV2StyleDexERC20("uniswapV2StyleDex", "U
         }
 
         uint amount0In = balance0 > reserve0 - amount0Out ? balance0 - (reserve0 - amount0Out) : 0; //(※1)
-        uint amount1In = balance1 > reserve1 - amount1Out ? balance1 - (reserve1 = amount1Out) : 0; //(※2)
+        uint amount1In = balance1 > reserve1 - amount1Out ? balance1 - (reserve1 - amount1Out) : 0; //(※2)
         require(amount0In > 0 || amount1In > 0, 'uniswapV2StyleDexPool: INSUFFICIENT_INPUT_AMOUNT');
         /*
          - (※1,2) "?" 側が採用されるとき最後の "= amount1Out" は 0 になるから右辺は
          - balance1 > reserve1 - amount1Out ? balance1 - reserve1 : 0; で良いが便宜上 "= amount1Out" をたしてる。
         */
         
+        //定数積公式(手数料 0.3% 想定)
         uint balance0Adjusted = (balance0 * 1000) - (amount0In * 3); //(※3)
         uint balance1Adjusted = (balance1 * 1000) - (amount1In * 3); //(※4)
         require(balance0Adjusted * balance1Adjusted >= reserve0 * reserve1 * 1000**2, 'uniswapV2StyleDexPool: K'); //(※5)
         /*
-         - //(※3,4)
-         - //(※5)
+         - (※3,4) reserve0 + amount0In * 0.997 を　balance0 - amount0In * 0.003 にしてる。前もって99.7%掛けるんではなく後から0.3%引いてる。
+         - さらに、各項に1000掛けて小数を消してる。
+         - (※5) 定数積公式なので両辺 "="　のはずが　">=" になる理由だが、まずuniswapV2StyleDexRouterコントラクトのswapTokenPair関数で求めた
+         - amountOutはsolidityの事情で小数を切り捨てた値なので、reserveから出ていく量が小数ぶん減り、プールに残る量が小数ぶん増える。よって、
+         - そのまま計算された左辺の値は想定より大きくなってしまう。
+         -
+         -
+         - ・スワップ手数料によって流動性提供者が得をする仕組み
+         - 定数積公式はプールに入ってくるInの量から手数料を差し引いた状態で計算されるが、実際にプールに入ってくるのは手数料を差し引いてないIn
+         - の量である。よって流動性提供者が増えたりしたわけでもないのに、スワップのたびに投入した方のトークンのプール内の量が手数料分増える。
+         - これは、定数積公式の K が前回の K より僅かに増えるということでもある。この仕組みは流動性提供者のためのものである。というのも、流動
+         - 性提供者からすれば提供していたトークンペアを返してもらう際、世界中の流動性提供者が持っている流動性トークンの総量に対する自分が持って
+         - いる流動性トークンの量と同じ割合でプールにあるトークンの量から自分の手元に帰ってくるトークンの量が決まるわけだが、分母であるプール内
+         - のトークン量が勝手に増えてくれるおかげで引っぱり出せるトークンの量が増えるのだ。例えば流動性トークンを全体の1割持っていてプール内の
+         - トークンMの量が50、トークンNの量が100だとしたら、流動性トークンを返せばトークンMとNそれぞれ5と10返ってくる。ただもし誰かのスワップ
+         - のおかげでプール内のトークンMの量が60、トークンNの量が110とかになっていたなら、返ってくるトークンMとNはそれぞれ6と11に増える、自分
+         - は特に何もしていないのにだ。この仕組みのおかげで流動性提供者が増える。
         */
 
         reserve0 = balance0;

@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { getAmountOut } from "./lib/utilities";
 import uniswapV2StyleDexPool from "../artifacts/contracts/uniswapV2StyleDexPool.sol/uniswapV2StyleDexPool.json";
 
 const MINIMUM_LIQUIDITY = 10**3;
@@ -109,7 +110,7 @@ describe("uniswapV2StyleDexPool test", function() {
         });
     })
 
-    describe.only("burn", function() {
+    describe("burn", function() {
         it("burn all liquidity from account1", async function() {
             const { account0, account1, account2, pool, token0, token1 } = await loadFixture(deployPoolAndMintFixture);
 
@@ -135,6 +136,54 @@ describe("uniswapV2StyleDexPool test", function() {
 
             expect(await pool.balanceOf(pool.address)).to.eq(0);
             await expect(pool.connect(account0).burn(account2.address)).to.be.revertedWith('uniswapV2StyleDexPool: INSUFFICIENT_LIQUIDITY_BURNED');
+        });
+    })
+
+    describe("swap", function() {
+        it("swap token0 to token1", async function() {
+            const { account0, account1, account2, pool, token0, token1 } = await loadFixture(deployPoolAndMintFixture);
+
+            const amountIn = 10000;
+            const reserveIn = await pool.reserve0();
+            const reserveOut = await pool.reserve1();
+            await token0.connect(account0).transfer(pool.address, amountIn);
+            const amountOut = getAmountOut(amountIn, reserveIn, reserveOut);
+            await expect(pool.connect(account1).swap(0, amountOut, account2.address))
+                .to.emit(pool, 'Swap')
+                .withArgs(account1.address, amountIn, 0, 0, amountOut, account2.address);
+        });
+
+        it("swap and withdraw too much token1", async function() {
+            const { account0, account1, account2, pool, token0, token1} = await loadFixture(deployPoolAndMintFixture);
+
+            const amountIn = 10000;
+            const reserveIn = await pool.reserve0();
+            const reserveOut = await pool.reserve1();
+            await token0.connect(account0).transfer(pool.address, amountIn);  // await token0.transfer(pool.address, amountIn);
+            const amountOut = getAmountOut(amountIn, reserveIn, reserveOut).add(1);
+            await expect(pool.connect(account1).swap(0, amountOut, account2.address)).to.be.revertedWith('uniswapV2StyleDexPool: K');
+        });
+
+        it("swap token1 to token0", async function() {
+            const { account0, account1, account2, pool, token0, token1 } = await loadFixture(deployPoolAndMintFixture);
+
+            const amountIn = 10000;
+            const reserveOut = await pool.reserve0();
+            const reserveIn = await pool.reserve1();
+            await token1.connect(account0).transfer(pool.address, amountIn);
+            const amountOut = getAmountOut(amountIn, reserveIn, reserveOut);
+            await expect(pool.connect(account1).swap(amountOut, 0, account2.address))
+                .to.emit(pool, 'Swap')
+                .withArgs(account1.address, 0, amountIn, amountOut, 0, account2.address);
+        });
+
+        it("swap without input", async function() {
+            const { account0, account1, account2, pool, token0, token1 } = await loadFixture(deployPoolAndMintFixture);
+
+            // const amountIn = 10000;
+            // const reserveIn = await pool.reserve0();
+            // const reserveOut = await pool.reserve1();
+            await expect(pool.connect(account1).swap(0, 1, account2.address)).to.be.revertedWith('uniswapV2StyleDexPool: INSUFFICIENT_INPUT_AMOUNT');
         });
     })
 })

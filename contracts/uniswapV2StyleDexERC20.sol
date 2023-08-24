@@ -2,7 +2,11 @@
 pragma solidity ^0.8.17;
 
 import './interfaces/IERC20.sol';
-
+/*
+ - ・トークンのイメージ
+ - 利用者全員分の何らか(お金)のやり取りをひたすら記録する世界に1つだけの記録帳(通帳)。
+ - 利用者が各々通帳を持ってるわけじゃない。1つしかない。
+*/
 
 contract uniswapV2StyleDexERC20 is IERC20 {
     uint256 internal _totalSupply;
