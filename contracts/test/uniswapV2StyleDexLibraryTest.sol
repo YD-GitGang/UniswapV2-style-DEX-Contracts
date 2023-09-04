@@ -7,4 +7,8 @@ contract uniswapV2StyleDexLibraryTest {
     function quote (uint amountA, uint reserveA, uint reserveB) public pure returns (uint amountB) {
         amountB = uniswapV2StyleDexLibrary.quote(amountA, reserveA, reserveB);
     }
+    
+    function getAmountOut (uint amountIn, uint reserveIn, uint reserveOut) public pure returns(uint amountOut) {
+        amountOut = uniswapV2StyleDexLibrary.getAmountOut(amountIn, reserveIn, reserveOut);
+    }
 }

@@ -95,5 +95,29 @@ describe('uniswapV2StyleDexLibrary', function () {
             const amountB: BigNumber = BigNumber.from(amountA).mul(reserveB).div(reserveA);
             expect(await lib.quote(amountA, reserveA, reserveB)).to.eq(amountB);
         })
-    })
+    });
+
+    describe('getAmountOut', async function() {
+        it('get amountout', async function() {
+            const { lib } = await loadFixture(deployLibFixture);
+            const amountIn: BigNumber = BigNumber.from(2).pow(100).add(1)
+            const reserveIn: BigNumber = BigNumber.from(123)
+            const reserveOut: BigNumber = BigNumber.from(2).pow(50).add(1)
+            const amountInWithFee: BigNumber = amountIn.mul(997)
+            const numerator: BigNumber = amountInWithFee.mul(reserveOut)
+            const denominator: BigNumber = (reserveIn.mul(1000)).add(amountInWithFee)
+            const amountOut: BigNumber = numerator.div(denominator)
+            expect(await lib.getAmountOut(amountIn, reserveIn, reserveOut)).to.eq(amountOut)
+        });
+
+        it('insufficient input amount', async () => {
+            const { lib } = await loadFixture(deployLibFixture);
+            await expect(lib.getAmountOut(0, 100, 200)).to.be.revertedWith('uniswapV2StyleDexLibrary: INSUFFICIENT_INPUT_AMOUNT');
+        });
+
+        it('insufficient liquidity', async function() {
+            const { lib } = await loadFixture(deployLibFixture);
+            await expect(lib.getAmountOut(100, 0, 200)).to.be.revertedWith('uniswapV2StyleDexLibrary: INSUFFICIENT_LIQUIDITY');
+        });
+    });
 })

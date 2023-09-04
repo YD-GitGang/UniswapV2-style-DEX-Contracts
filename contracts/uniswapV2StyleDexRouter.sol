@@ -31,7 +31,7 @@ contract uniswapV2StyleDexRouter {
         uint reserve1 = uniswapV2StyleDexPool(pool).reserve1();
         (uint reserveA, uint reserveB) = tokenA < tokenB ? (reserve0, reserve1) : (reserve1, reserve0);
 
-        if (reserveA == 0 && reserveB ==0) {
+        if (reserveA == 0 && reserveB == 0) {
             (amountA, amountB) = (amountADesired, amountBDesired);
         } else {
             uint amountBOptimal = uniswapV2StyleDexLibrary.quote(amountADesired, reserveA, reserveB);
@@ -110,5 +110,40 @@ contract uniswapV2StyleDexRouter {
         (amountA, amountB) = tokenA < tokenB ? (amount0, amount1) : (amount1, amount0);
         require(amountA >= amountAMin, 'uniswapV2StyleDexRouter: INSUFFICIENT_A_AMOUNT');
         require(amountB >= amountBMin, 'uniswapV2StyleDexRouter: INSUFFICIENT_B_AMOUNT');
+    }
+    
+    function swapTokenPair (
+        address tokenIn,
+        address tokenOut,
+        uint amountIn,
+        uint amountOutMin,
+        address to,
+        uint deadline
+    ) external ensure(deadline) returns(uint amountOut) {
+        address pool = uniswapV2StyleDexFactory(factory).getPool(tokenIn, tokenOut);
+        require(pool != address(0), 'uniswapV2StyleDexRouter: POOL_DOES_NOT_EXIST');
+
+        {  // Avoid stack too deep error
+        uint reserve0 = uniswapV2StyleDexPool(pool).reserve0();
+        uint reserve1 = uniswapV2StyleDexPool(pool).reserve1();
+        (uint reserveIn, uint reserveOut) = tokenIn < tokenOut ? (reserve0, reserve1) : (reserve1, reserve0);
+        amountOut = uniswapV2StyleDexLibrary.getAmountOut(amountIn, reserveIn, reserveOut);
+        }
+
+        require(amountOut >= amountOutMin, 'uniswapV2StyleDexRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+
+        //bool success = uniswapV2StyleDexERC20(tokenIn).transferFrom(msg.sender, pool, amountIn);
+        bool success = IERC20(tokenIn).transferFrom(msg.sender, pool, amountIn);
+        require(success, 'uniswapV2StyleDexRouter: TOKEN_IN_TRANSFER_FAILED');
+        (uint amount0Out, uint amount1Out) = tokenIn < tokenOut ? (uint(0), amountOut) : (amountOut, uint(0));  // (※1)
+        uniswapV2StyleDexPool(pool).swap(amount0Out, amount1Out, to);
+        /*
+         - (※1) uint(0): 0が256bitの符号なし整数であることを明示。でないとuint8と判断される。
+         - エラー参考: True expression's type tuple(uint8,uint256) does not match false expression's type tuple(uint256,uint8).
+        */
+    }
+
+    function getAmountOut (uint amountIn, uint reserveIn, uint reserveOut) external pure returns(uint amountOut) {
+        amountOut = uniswapV2StyleDexLibrary.getAmountOut(amountIn, reserveIn, reserveOut);
     }
 }

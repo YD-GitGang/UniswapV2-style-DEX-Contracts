@@ -37,7 +37,7 @@ describe("uniswapV2StyleDexFactory", function () {
     it("pool created at expected address", async function() {
         const { factory } = await loadFixture(deployFactoryFixture);
         const bytecode: string = uniswapV2StyleDexPool.bytecode;
-        const [address0, address1] = TEST_ADDRESSES[0] < TEST_ADDRESSES[1] ? TEST_ADDRESSES : [TEST_ADDRESSES[0], TEST_ADDRESSES[1]];
+        const [address0, address1] = TEST_ADDRESSES[0] < TEST_ADDRESSES[1] ? TEST_ADDRESSES : [TEST_ADDRESSES[1], TEST_ADDRESSES[0]];
         const creat2Address = getCreate2Address(factory.address, [address0, address1], bytecode);
 
         await expect(factory.createPool(...TEST_ADDRESSES))
