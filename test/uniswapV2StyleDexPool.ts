@@ -1,8 +1,13 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { getAmountOut } from "./lib/utilities";
-import uniswapV2StyleDexPool from "../artifacts/contracts/uniswapV2StyleDexPool.sol/uniswapV2StyleDexPool.json";
+import { getAmountOut } from "./lib/utilities";  //(※1)
+import uniswapV2StyleDexPool from "../artifacts/contracts/uniswapV2StyleDexPool.sol/uniswapV2StyleDexPool.json";  //(※2)
+/*
+ - (※1)Aの中からDを選んで取り出している。分割代入？
+ - (※2)Aごと持って来てこちらで名前をTと適当につけ、Aの中のDを使いたければT.Dとして使う。
+ - 名前付きエキスポートとかモジュール辺りの話なのだろうきっと。
+*/
 
 const MINIMUM_LIQUIDITY = 10**3;
 

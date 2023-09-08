@@ -245,5 +245,42 @@ describe("uniswapV2StyleDexRouter", function() {
             await expect(router.connect(account1).removeLiquidity(owner.address, tokenB.address, liquidity, 0, 0, account2.address, deadline))
                 .to.be.revertedWith('uniswapV2StyleDexRouter: POOL_DOES_NOT_EXIST');
         });
-    })
+    });
+
+    describe("swapTokenPair", function() {
+        it("test swapTokenPair", async function() {
+            const { owner, account1, account2, tokenA, tokenB, factory, pool, router } = await loadFixture(step2Fixture);
+            
+            const deadline = Math.floor(Date.now() / 1000) + 60;
+            const reserveA = await tokenA.balanceOf(pool.address);
+            const reserveB = await tokenB.balanceOf(pool.address);
+            const amountIn = 100000;
+            const amountOut = await router.getAmountOut(amountIn, reserveA, reserveB);
+            const [amount0In, amount1In] = tokenA.address < tokenB.address ? [amountIn, 0] : [0, amountIn];
+            const [amount0Out, amount1Out] = tokenA.address < tokenB.address ? [0, amountOut] : [amountOut, 0];
+
+            await tokenA.connect(account2).approve(router.address, amountIn);
+            await expect(router.connect(account2).swapTokenPair(tokenA.address, tokenB.address, amountIn, 0, account2.address, deadline))
+                .to.emit(pool, 'Swap')
+                .withArgs(router.address, amount0In, amount1In, amount0Out, amount1Out, account2.address);
+            
+            expect(await tokenA.balanceOf(pool.address)).to.eq(reserveA.add(amountIn));
+            expect(await tokenB.balanceOf(account2.address)).to.eq(amountOut.add(500000));
+        });
+
+        it("revert by amountOutMin", async function() {
+            const { owner, account1, account2, tokenA, tokenB, factory, pool, router } = await loadFixture(step2Fixture);
+
+            const deadline = Math.floor(Date.now() / 1000) + 60;
+            // const reserveA = await tokenA.balanceOf(pool.address);
+            // const reserveB = await tokenB.balanceOf(pool.address);
+            const amountIn = 10000;
+            const amountOutMin = 30000;
+            //amountOutは 18,132 になる。
+
+            await tokenA.connect(account2).approve(router.address, amountIn);
+            await expect(router.connect(account2).swapTokenPair(tokenA.address, tokenB.address, amountIn, amountOutMin, account2.address, deadline))
+                .to.be.revertedWith('uniswapV2StyleDexRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        });
+    });
 })
