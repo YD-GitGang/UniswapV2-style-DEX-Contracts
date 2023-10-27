@@ -12,11 +12,26 @@ const TEST_ADDRESSES: [string, string] = [
 
 describe("uniswapV2StyleDexFactory", function () {
     async function deployFactoryFixture() {
-        const Factory: ContractFactory = await ethers.getContractFactory("uniswapV2StyleDexFactory");
-        const factory: Contract = await Factory.deploy();
+        const Factory: ContractFactory = await ethers.getContractFactory("uniswapV2StyleDexFactory");  //(※1)
+        const factory: Contract = await Factory.deploy();  //(※2)
         await factory.deployed();
         return { factory }
     }
+    /*
+     - (※1)
+     - 純粋にethersでデプロイではなくhardhat使ってデプロイする時は
+     - ContractFactory(abi, bytecode, signer)じゃなくてgetContractFactory("コントラクト名")で済む。本番ではなくhardhatネットワーク使用時の
+     - getContractFactory("コントラクト名")の中身はコントラクトをコンパイルしたartifactsにあるabiとbytecodeと、hardhatネットワークにアクセス
+     - するためのプロバイダー(多分 ethers.provider )とかをかき集めたもの、多分。hardhatネットワークだから秘密鍵はハショれる、多分。
+     - getContractFactoryがabiとか色々かき集めるから待ってくれということでawait、多分。
+     - 一方hardhat使わない素のethersの書き方は new ethers.ContractFactory(abi, bytecode, signer)。abiとかを直で渡してコントラクトのインスタ
+     - ンスをつくるからnew、多分。
+     - 
+     - (※2)
+     - await Factory.deploy()の返値は、
+     - 本番ネットワークで関数呼び出しする時に使う、コントラクトにアクセスするためのオブジェクト new ethers.Contract(address, abi, provider) に
+     - 相当する物なんだろう、きっと。
+    */
 
     it("get no pool address before creation", async function () {
         const { factory } = await loadFixture(deployFactoryFixture);

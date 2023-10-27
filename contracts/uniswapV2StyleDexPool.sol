@@ -36,10 +36,14 @@ contract uniswapV2StyleDexPool is uniswapV2StyleDexERC20("uniswapV2StyleDex", "U
     }
 
     function mint(address to) external returns (uint liquidity) {
-        uint balance0 = IERC20(token0).balanceOf(address(this));
+        uint balance0 = IERC20(token0).balanceOf(address(this));  // (※5)
         uint balance1 = IERC20(token1).balanceOf(address(this));
         uint amount0 = balance0 - reserve0;
         uint amount1 = balance1 - reserve1;
+        /*
+         - (※5)
+         - デプロイされたコントラクトから他のデプロイされたコントラクトの関数を遠隔で起動。
+        */
         
         /*
          - ステートヴァリアブルをpublicにすると他のコントラクトで使うときゲッター関数として後ろに()つけて使うかけど、

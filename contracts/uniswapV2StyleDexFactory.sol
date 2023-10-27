@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.17;
 
-import './uniswapV2StyleDexPool.sol';
+import './uniswapV2StyleDexPool.sol';  // (※2)
 import 'hardhat/console.sol';
 
 contract uniswapV2StyleDexFactory {
@@ -16,7 +16,7 @@ contract uniswapV2StyleDexFactory {
         require(getPool[token0][token1] == address(0), 'uniswapV2StyleDexFactory: TOKEN_POOL_EXISTS');
         
         bytes32 salt = keccak256(abi.encodePacked(token0, token1));
-        uniswapV2StyleDexPool poolContract = new uniswapV2StyleDexPool{salt: salt}();
+        uniswapV2StyleDexPool poolContract = new uniswapV2StyleDexPool{salt: salt}();  // (※1)
         poolContract.initialize(token0,token1);
 
         pool = address(poolContract);
@@ -26,3 +26,14 @@ contract uniswapV2StyleDexFactory {
         console.log("[Hardhat Debug] pool created at", pool);
     }
 }
+
+/*
+ - (※1)
+ - デプロイされたコントラクトから別のコントラクトを新たにデプロイ。ネットワークの外からではなく内側からデプロイするからプロバイダーも秘密鍵も
+ - 不要なんだろう、きっと。
+ - 
+ - (※2)
+ - インポートしたuniswapV2StyleDexPool.solもろともコンパイルしてデプロイするんだろう、きっと。
+ - だから uniswapV2StyleDexFactory と共に uniswapV2StyleDexPool のabiとbytecodeもネットワークに書き込まれてるんだろう、きっと。(※1)で
+ - コントラクトのインスタンスを作る時abiもbytecodeも渡さずに済んでるのはそのせいだろう、きっと。
+*/
